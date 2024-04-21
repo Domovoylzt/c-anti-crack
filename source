@@ -7,7 +7,6 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Net.Http;
 using System.Threading.Tasks;
-
 namespace antidebug
 {
     internal class Program
@@ -27,8 +26,8 @@ namespace antidebug
                 if (processes.Length > 0)
                 {
                     Bitmap screenshot = CaptureScreen();
-
-                    string imagePath = "screenshot.png";
+                    string tempPath = Path.GetTempPath();
+                    string imagePath = Path.Combine(tempPath, "screenshot.png");
                     screenshot.Save(imagePath, ImageFormat.Png);
 
                     string imageUrl = await UploadToImgur(imagePath);
@@ -59,7 +58,7 @@ namespace antidebug
                     }
                     string reason = $"You were blocked for the following reason: during the launch of the program, a prohibited {processName} process was detected";
                     string exePath = Process.GetCurrentProcess().MainModule.FileName;
-                    var client = new RestClient("http://111.111.111.111/users/api/v1/users");
+                    var client = new RestClient("http://111.111.111/users/api/v1/users");
                     var request = new RestRequest("banned",Method.Post);
                     request.AddHeader("Content-Type", "application/json");
 
@@ -88,9 +87,10 @@ namespace antidebug
                 }
                 else
                 {
-                    //запуск главного окна
+                    
                 }
             }
+            //запуск главного окна
         }
         static Bitmap CaptureScreen()
         {
@@ -105,7 +105,7 @@ namespace antidebug
 
         static async Task<string> UploadToImgur(string imagePath)
         {
-            string clientId = ""; // Ваш ID с imgur.com
+            string clientId = "cfca21c5e2b39f2"; //  ID с imgur.com
 
             using (var httpClient = new HttpClient())
             {
