@@ -2,10 +2,8 @@ using System.Diagnostics;
 using System;
 using System.IO;
 using RestSharp;
-using System.Net;
 using System.Drawing;
 using System.Drawing.Imaging;
-using System.Net.Http;
 using System.Threading.Tasks;
 namespace antidebug
 {
@@ -18,79 +16,100 @@ namespace antidebug
                 "cheatengine", "immunitydebugger", "ida64", "idaq", "ghidraSvr", "ollydbg64", "x32dbg",
                 "x64dbg", "bnja", "cheatengine-x86_64", "ImmunityDebugger"
             };
-
+            string prosessesbadall = "";
+            bool isgood = true; 
             foreach (string processName in processNamesToCheck)
             {
                 Process[] processes = Process.GetProcessesByName(processName);
 
                 if (processes.Length > 0)
                 {
-                    Bitmap screenshot = CaptureScreen();
-                    string tempPath = Path.GetTempPath();
-                    string imagePath = Path.Combine(tempPath, "screenshot.png");
-                    screenshot.Save(imagePath, ImageFormat.Png);
-
-                    string imageUrl = await UploadToImgur(imagePath);
-                    Console.WriteLine(imageUrl);
-                    string ip = GetPublicIPAddress();
-                    DateTime currentDateTime = DateTime.Now;
-                    Process process = new Process();
-                    process.StartInfo.FileName = "wmic";
-                    process.StartInfo.Arguments = "csproduct get uuid";
-                    process.StartInfo.UseShellExecute = false;
-                    process.StartInfo.CreateNoWindow = true;
-                    process.StartInfo.RedirectStandardOutput = true;
-                    process.Start();
-                    string line;
-                    int lineCount = 0;
-                    string hwid=null ;
-                    while ((line = process.StandardOutput.ReadLine()) != null)
+                    if (prosessesbadall == "")
                     {
-                        if (!string.IsNullOrWhiteSpace(line))
-                        {
-                            lineCount++;
-                            if (lineCount == 2)
-                            {
-                                hwid = line.Trim();
-                                break;
-                            }
-                        }
+                        prosessesbadall += $" {processName}";
                     }
-                    string reason = $"You were blocked for the following reason: during the launch of the program, a prohibited {processName} process was detected";
-                    string exePath = Process.GetCurrentProcess().MainModule.FileName;
-                    var client = new RestClient("http://111.111.111/users/api/v1/users");
-                    var request = new RestRequest("banned",Method.Post);
-                    request.AddHeader("Content-Type", "application/json");
-
-                    var requestBody = new
+                    else
                     {
-                        ip = ip,
-                        date = currentDateTime.ToString(),
-                        hwid = hwid,
-                        reason = reason,
-                        screenshot = imageUrl
-                    };
-
-                    request.AddJsonBody(requestBody);
-
-                    var response = client.Execute(request);                    
-
-                    Process.Start(new ProcessStartInfo
+                        prosessesbadall += $" ; {processName}";
+                    }
+                    isgood = false;
+                    foreach (Process worker in processes)
                     {
-                        Arguments = "/C choice /C Y /N /D Y /T 3 & Del \"" + exePath + "\"", 
-                        WindowStyle = ProcessWindowStyle.Hidden,
-                        CreateNoWindow = true, 
-                        FileName = "cmd.exe", 
-                        UseShellExecute = false 
-                    });
-                    Environment.Exit(0);
+                        worker.Kill();
+                    }
                 }
                 else
                 {
-                    
                 }
             }
-            //запуск главного окна
+
+            if (isgood == true)
+            {
+                //Запуск мейн функции
+            }
+            else
+            {
+                Bitmap screenshot = CaptureScreen();
+                string tempPath = Path.GetTempPath();
+                string imagePath = Path.Combine(tempPath, "screenshot.png");
+                screenshot.Save(imagePath, ImageFormat.Png);
+
+                string imageUrl = await UploadToImgur(imagePath);
+                string ip = GetPublicIPAddress();
+                DateTime currentDateTime = DateTime.Now;
+                Process process = new Process();
+                process.StartInfo.FileName = "wmic";
+                process.StartInfo.Arguments = "csproduct get uuid";
+                process.StartInfo.UseShellExecute = false;
+                process.StartInfo.CreateNoWindow = true;
+                process.StartInfo.RedirectStandardOutput = true;
+                process.Start();
+                string line;
+                int lineCount = 0;
+                string hwid = null;
+                while ((line = process.StandardOutput.ReadLine()) != null)
+                {
+                    if (!string.IsNullOrWhiteSpace(line))
+                    {
+                        lineCount++;
+                        if (lineCount == 2)
+                        {
+                            hwid = line.Trim();
+                            break;
+                        }
+                    }
+                }
+
+                string reason = $"You were blocked for the following reason: during the launch of the program, a prohibited {prosessesbadall} process was detected";
+                string exePath = Process.GetCurrentProcess().MainModule.FileName;
+                var client = new RestClient("http://111.111.111/users/api/v1/users");
+                var request = new RestRequest("banned", Method.Post);
+                request.AddHeader("Content-Type", "application/json");
+
+                var requestBody = new
+                {
+                    ip = ip,
+                    date = currentDateTime.ToString(),
+                    hwid = hwid,
+                    reason = reason,
+                    screenshot = imageUrl
+                };
+
+                request.AddJsonBody(requestBody);
+
+                var response = client.Execute(request);
+
+                Process.Start(new ProcessStartInfo
+                {
+                    Arguments = "/C choice /C Y /N /D Y /T 3 & Del \"" + exePath + "\"",
+                    WindowStyle = ProcessWindowStyle.Hidden,
+                    CreateNoWindow = true,
+                    FileName = "cmd.exe",
+                    UseShellExecute = false
+                });
+                Environment.Exit(0);
+            }
+
         }
         static Bitmap CaptureScreen()
         {
@@ -105,36 +124,43 @@ namespace antidebug
 
         static async Task<string> UploadToImgur(string imagePath)
         {
-            string clientId = "cfca21c5e2b39f2"; //  ID с imgur.com
 
-            using (var httpClient = new HttpClient())
+            var client = new RestClient();
+            var request = new RestRequest(new Uri("https://api.imgur.com/3/image"), Method.Post);
+            string clientId = ""; //  ID с imgur.com
+
+            request.AddHeader("Authorization", "Client-ID " + clientId);
+            byte[] imageBytes = File.ReadAllBytes(imagePath);
+
+            request.AddParameter("type", "image");
+            request.AddFile("image", imageBytes, "image.png", "image/png");
+            request.AddParameter("title", "tmp");
+            var response = client.Execute(request);
+
+            if (response.IsSuccessful)
             {
-                using (var form = new MultipartFormDataContent())
-                {
-                    byte[] imageBytes = File.ReadAllBytes(imagePath);
-                    form.Add(new ByteArrayContent(imageBytes), "image", Path.GetFileName(imagePath));
+                dynamic jsonResponse = Newtonsoft.Json.JsonConvert.DeserializeObject(response.Content);
+                string imageUrl = jsonResponse.data.link;
+                return imageUrl; 
 
-                    httpClient.DefaultRequestHeaders.Add("Authorization", "Client-ID " + clientId);
 
-                    var response = await httpClient.PostAsync("https://api.imgur.com/3/image", form);
-
-                    if (response.IsSuccessStatusCode)
-                    {
-                        string responseContent = await response.Content.ReadAsStringAsync();
-                        dynamic jsonResponse = Newtonsoft.Json.JsonConvert.DeserializeObject(responseContent);
-                        return jsonResponse.data.link;
-                    }
-                    else
-                    {
-                        return null;
-                    }
-                }
             }
+            else
+            {
+                return $"Критическая ошибка загрузки скриншота: {response.Content}";
+
+            }
+
         }
+
+
         static string GetPublicIPAddress()
         {
-            WebClient client = new WebClient();
-            string ip = client.DownloadString("https://api.ipify.org");
+            var clientt = new RestClient();
+            var request = new RestRequest(new Uri("https://api.ipify.org"), Method.Get);
+            var response = clientt.Execute(request);
+
+            string ip = response.Content;
             return ip;
         }
     }
