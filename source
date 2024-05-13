@@ -132,7 +132,7 @@ namespace antidebug
 
             var client = new RestClient();
             var request = new RestRequest(new Uri("https://api.imgur.com/3/image"), Method.Post);
-            string clientId = "cfca21c5e2b39f2"; 
+            string clientId = "ваш токен"; 
 
             request.AddHeader("Authorization", "Client-ID " + clientId);
             byte[] imageBytes = File.ReadAllBytes(imagePath);
